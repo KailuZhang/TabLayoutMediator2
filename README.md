@@ -1,0 +1,2 @@
+# TabLayoutMediator2
+实现TabLayout+RecyclerView的锚点定位
