@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
 import io.kailuzhang.github.demo.adapter.FeedAdapter
@@ -26,6 +27,11 @@ class WithOffsetActivity : AppCompatActivity() {
             var totalDy = 0
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 totalDy += dy
+                val firstCompleteVisiblePosition =
+                    (recyclerView.layoutManager as? LinearLayoutManager)?.findFirstCompletelyVisibleItemPosition()
+                if (firstCompleteVisiblePosition == 0) {
+                    totalDy = 0
+                }
                 binding.tabLayout.alpha = totalDy / 800f
             }
         })
