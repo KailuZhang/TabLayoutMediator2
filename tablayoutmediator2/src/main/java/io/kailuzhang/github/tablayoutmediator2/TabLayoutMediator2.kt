@@ -1,8 +1,6 @@
 package io.kailuzhang.github.tablayoutmediator2
 
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener
@@ -30,6 +28,7 @@ class TabLayoutMediator2(
     private val recyclerView: RecyclerView,
     private val tabCount: Int,
     private val appBarLayout: AppBarLayout? = null,
+    private val offset: Int = 0,
     private val autoRefresh: Boolean = true,
     private val tabConfigurationStrategy: TabConfigurationStrategy
 ) {
@@ -70,7 +69,7 @@ class TabLayoutMediator2(
         attached = true
 
         // Add our custom onScrollListener to the RecyclerView
-        onScrollListener = TabLayoutOnScrollListener(tabLayout)
+        onScrollListener = TabLayoutOnScrollListener(tabLayout, offset)
         recyclerView.addOnScrollListener(onScrollListener!!)
 
         // Now we'll add a tab selected listener to set RecyclerView's current item
@@ -128,8 +127,9 @@ class TabLayoutMediator2(
 
     // Refresh selectedTabPosition according to recyclerView first visible item
     private fun refreshCurrentItemTabPosition() {
-        val currItem = recyclerView.findFirstVisibleItemPosition()
-        val viewType = recyclerView.adapter?.getItemViewType(currItem) ?: -1
+        val position = recyclerView.findFirstVisibleItemPosition(offset)
+        if (position < 0) return
+        val viewType = recyclerView.adapter?.getItemViewType(position) ?: -1
         val tabCount = tabLayout.tabCount
         for (i in 0 until tabCount) {
             val tab = tabLayout.getTabAt(i)
@@ -148,12 +148,15 @@ class TabLayoutMediator2(
     }
 
     private class TabLayoutOnScrollListener(
-        tabLayout: TabLayout
+        tabLayout: TabLayout,
+        val offset: Int
     ) : RecyclerView.OnScrollListener() {
         private var previousScrollState = 0
         private var scrollState = 0
+
         // Is click tab to scroll
         var tabClickScroll: Boolean = false
+
         // Selected tab position now, because tabLayout.setScrollPosition don't change tabLayout selectedTabPosition
         var selectedTabPosition: Int = -1
 
@@ -165,8 +168,9 @@ class TabLayoutMediator2(
                 return
             }
 
-            val currItem = recyclerView.findFirstVisibleItemPosition()
-            val viewType = recyclerView.adapter?.getItemViewType(currItem) ?: -1
+            val firstVisibleItem =
+                recyclerView.findFirstVisibleItemPosition(offset = if (dy == 0) 0 else offset)
+            val viewType = recyclerView.adapter?.getItemViewType(firstVisibleItem) ?: -1
             val tabCount = tabLayoutRef.get()?.tabCount ?: 0
             for (i in 0 until tabCount) {
                 val tab = tabLayoutRef.get()?.getTabAt(i)
@@ -251,12 +255,12 @@ class TabLayoutMediator2(
         when {
             // Target position before firstItem
             recyclerViewPosition <= firstItem -> {
-                recyclerView.scrollToPosition(recyclerViewPosition)
+                recyclerView.scrollToPosition(recyclerViewPosition, offset)
             }
             // Target position in firstItem .. lastItem
             recyclerViewPosition <= lastItem -> {
                 val top: Int = recyclerView.getChildAt(recyclerViewPosition - firstItem).top
-                recyclerView.scrollBy(0, top)
+                recyclerView.scrollBy(0, top - offset)
             }
             // Target position after lastItem
             else -> {
@@ -297,34 +301,6 @@ class TabLayoutMediator2(
 
         override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
             populateTabsFromPagerAdapter()
-        }
-    }
-}
-
-inline fun RecyclerView.findFirstVisibleItemPosition(): Int {
-    return when (val layoutManager = layoutManager) {
-        is LinearLayoutManager -> {
-            layoutManager.findFirstVisibleItemPosition()
-        }
-        is StaggeredGridLayoutManager -> {
-            layoutManager.findFirstVisibleItemPositions(null).firstOrNull() ?: 0
-        }
-        else -> {
-            0
-        }
-    }
-}
-
-inline fun RecyclerView.findLastVisibleItemPosition(): Int {
-    return when (val layoutManager = layoutManager) {
-        is LinearLayoutManager -> {
-            layoutManager.findLastVisibleItemPosition()
-        }
-        is StaggeredGridLayoutManager -> {
-            layoutManager.findLastVisibleItemPositions(null).firstOrNull() ?: 0
-        }
-        else -> {
-            0
         }
     }
 }

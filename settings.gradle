@@ -1,2 +1,3 @@
+include ':tablayoutmediator2'
 include ':app'
 rootProject.name = "TabLayoutMediator2"
