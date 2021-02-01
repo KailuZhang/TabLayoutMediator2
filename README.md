@@ -1,200 +1,158 @@
-# TabLayoutMediator2 -- 实现TabLayout+RecyclerView的锚点定位
+# Tablayout与RecyclerView锚点定位库——TabLayoutMediator2版本发布
 
 ## 背景
 
-在ViewPager2发布之后，TabLayout加入了一个非常好用的中间类--``TabLayoutMediator``来实现TabLayout与ViewPager2的绑定与滑动联动效果。今天我们就模仿``TabLayoutMediator``来实现一个TabLayout与RecyclerView的锚点定位功能。效果如下图:
+之前已经写了一篇[博客](https://juejin.cn/post/6878160381966024718)详细介绍了TabLayoutMediator2的具体实现，并把代码放到了github上，但是还存在两点问题
 
-![锚点定位](https://i.loli.net/2020/09/23/63TqSCv5j72tyMb.gif)
+1. 没有写Sample
+2. 只支持``TabLayout``与``RecyclerView``不重叠的情况，即``RecyclerView``在``TabLayout``的下方
 
-## 大致思路
+## 新版本
 
-思路是很简单的， 
+版本地址：[TabLayoutMediator2](https://github.com/KailuZhang/TabLayoutMediator2)
 
-1. 在每次tab选中的时候, 通过监听TabLayout的``OnTabSelectedListener``, 使RecyclerView滑动到对应位置
-2. 在RecyclerView滑动的时候，通过监听RecyclerView的``OnScrollListener``确定tab的选中位置
-3. Tab与RecyclerView中的Item的对应方式使用ViewType来实现，让每个tab绑定它所对应的RecyclerView中起始Item与末尾Item的ViewType。
+这次解决了以上的问题
 
-## 代码思路
-
-1. ``TabConfigurationStrategy`` -- TabLayout创建tab的回调接口
-
-   ```kotlin
-   /**
-    * A callback interface that must be implemented to set the text and styling of newly created
-    * tabs.
-    */
-   interface TabConfigurationStrategy {
-       /**
-        * Called to configure the tab for the page at the specified position. Typically calls [ ][TabLayout.Tab.setText], but any form of styling can be applied.
-        *
-        * @param tab The Tab which should be configured to represent the title of the item at the given
-        * position in the data set.
-        * @param position The position of the item within the adapter's data set.
-        * @return Adapter's first and last view type corresponding to the tab
-        */
-       fun onConfigureTab(tab: TabLayout.Tab, position: Int): IntArray
-   }
-   ```
-
-   其中``onConfigureTab``的返回值即为该Tab对应RecylcerView中起始Item与末尾Item的ViewType的Array
-
-2. ``TabLayoutOnScrollListener`` -- 继承于``RecyclerView.OnScrollListener()``，并持有TabLayout，监听RecylcerView滑动时, 改变TabLayout中Tab的选中状态
-
-   ```kotlin
-   private class TabLayoutOnScrollListener(
-       tabLayout: TabLayout
-   ) : RecyclerView.OnScrollListener() {
-       private var previousScrollState = 0
-       private var scrollState = 0
-       //是否是点击tab滚动
-       var tabClickScroll: Boolean = false
-       // TabLayout中Tab的选中状态
-       var selectedTabPosition: Int = -1
-   
-       private val tabLayoutRef: WeakReference<TabLayout> = WeakReference(tabLayout)
-   
-       override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-           super.onScrolled(recyclerView, dx, dy)
-           if (tabClickScroll) {
-               return
-           }
-   		//当前可见的第一个Item
-           val currItem = recyclerView.findFirstVisibleItemPosition()
-           val viewType = recyclerView.adapter?.getItemViewType(currItem) ?: -1
-           //根据Item的ViewType与TabLayout中Tab的ViewType的对应情况，选中对应tab
-           val tabCount = tabLayoutRef.get()?.tabCount ?: 0
-           for (i in 0 until tabCount) {
-               val tab = tabLayoutRef.get()?.getTabAt(i)
-               val viewTypeArray = tab?.tag as? IntArray
-               if (viewTypeArray?.contains(viewType) == true) {
-                   val updateText =
-                       scrollState != RecyclerView.SCROLL_STATE_SETTLING || previousScrollState == RecyclerView.SCROLL_STATE_DRAGGING
-                   val updateIndicator =
-                       !(scrollState == RecyclerView.SCROLL_STATE_SETTLING && previousScrollState == RecyclerView.SCROLL_STATE_IDLE)
-                   if (selectedTabPosition != i) {
-                       selectedTabPosition = i
-                       // setScrollPosition不会触发TabLayout的onTabSelected回调
-                       tabLayoutRef.get()?.setScrollPosition(
-                           i,
-                           0f,
-                           updateText,
-                           updateIndicator
-                       )
-                       break
-                   }
-               }
-           }
-       }
-   
-       override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-           super.onScrollStateChanged(recyclerView, newState)
-           previousScrollState = scrollState
-           scrollState = newState
-           // 区分是手动滚动，还是调用代码滚动
-           if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
-               tabClickScroll = false
-           }
-       }
-   }
-   ```
-
-3. ``RecyclerViewOnTabSelectedListener`` -- 继承``TabLayout.OnTabSelectedListener``， 监听TabLayout中Tab选中时，让RecyclerView滑动到对应位置，根据RecylerView要滑动到的位置此时需要区分3种情况
-
-   1. 在屏幕中第一个可见Item之前，直接调用``recyclerView.scrollToPosition``滑动到对应位置
-   2. 在屏幕第一个可见Item和最后一个可见Item之间，使用``view.getTop()``与``recyclerView.scrollBy(0, top)``滑动到对应位置
-   3. 在屏幕最后一个可见Item之后，先使用``recyclerView.scrollToPosition``让目标Item滑动到屏幕中可见，再使用``recylerView.post{}``， 走第二种情况，滑动到对应位置
-
-   同时也兼容AppBarLayout，当需要滑动到最上方即position为0，展开AppBar， 其他情况折叠AppBar
-
-   ```kotlin
-   private class RecyclerViewOnTabSelectedListener(
-       private val recyclerView: RecyclerView,
-       private val moveRecyclerViewToPosition: (recyclerViewPosition: Int, tabPosition: Int) -> Unit
-   ) : OnTabSelectedListener {
-       override fun onTabSelected(tab: TabLayout.Tab) {
-           moveRecyclerViewToPosition(tab)
-       }
-   
-       override fun onTabUnselected(tab: TabLayout.Tab) {
-       }
-   
-       override fun onTabReselected(tab: TabLayout.Tab) {
-           moveRecyclerViewToPosition(tab)
-       }
-   
-       private fun moveRecyclerViewToPosition(tab: TabLayout.Tab) {
-           val viewType = (tab.tag as IntArray).first()
-           val adapter = recyclerView.adapter
-           val itemCount = adapter?.itemCount ?: 0
-           for (i in 0 until itemCount) {
-               if (adapter?.getItemViewType(i) == viewType) {
-                   moveRecyclerViewToPosition.invoke(i, tab.position)
-                   break
-               }
-           }
-       }
-   }
-   
-   private fun moveRecycleViewToPosition(recyclerViewPosition: Int, tabPosition: Int) {
-       onScrollListener?.tabClickScroll = true
-       onScrollListener?.selectedTabPosition = tabPosition
-       val firstItem: Int = recyclerView.findFirstVisibleItemPosition()
-       val lastItem: Int = recyclerView.findLastVisibleItemPosition()
-       when {
-           // Target position before firstItem
-           recyclerViewPosition <= firstItem -> {
-               recyclerView.scrollToPosition(recyclerViewPosition)
-           }
-           // Target position in firstItem .. lastItem
-           recyclerViewPosition <= lastItem -> {
-               val top: Int = recyclerView.getChildAt(recyclerViewPosition - firstItem).top
-               recyclerView.scrollBy(0, top)
-           }
-           // Target position after lastItem
-           else -> {
-               recyclerView.scrollToPosition(recyclerViewPosition)
-               recyclerView.post {
-                   moveRecycleViewToPosition(recyclerViewPosition, tabPosition)
-               }
-           }
-       }
-       // If have appBar, expand or close it
-       if (recyclerViewPosition == 0) {
-           appBarLayout?.setExpanded(true, false)
-       } else {
-           appBarLayout?.setExpanded(false, false)
-       }
-   }
-   ```
-
-4. ``attach``方法，初始化各种监听，绑定RecyclerView与TabLayout。
+1. 完成了事例应用
+2. 支持了``TabLayout``与``RecyclerView``重叠的情况
+3. 发布到了jcenter仓库中
 
 ## 使用方法
 
-使用起来非常简单，只需要新建一个``TabLayoutMediator2``并调用``attach()``就好了
+在gradle中添加
 
-```kotlin
-val tabTextArrayList = arrayListOf("demo1", "demo2", "demo3")
-val tabViewTypeArrayList = arrayListof(intArrayOf(1, 2), intArrayOf(7, 8), intArrayOf(9, 11))
-
-TabLayoutMediator2(
-    tabLayout = binding.layoutGoodsDetailTop.tabLayout,
-    recyclerView = binding.recyclerView,
-    tabCount = tabTextArrayList.size,
-    appBarLayout = binding.appbar,
-    autoRefresh = false,
-    tabConfigurationStrategy = object : TabLayoutMediator2.TabConfigurationStrategy {
-        override fun onConfigureTab(tab: TabLayout.Tab, position: Int): IntArray {
-            tab.setText(tabTextArrayList[position])
-            return tabViewTypeArrayList[position]
-        }
-    }
-).apply {
-    attach()
+```groovy
+dependencies {
+		implementation 'io.kailuzhang.github.tablayoutmediator2:tablayoutmediator2:0.1.0'
 }
 ```
 
+```kotlin
+TabLayoutMediator2(
+  tabLayout = binding.tabLayout,
+  recyclerView = binding.itemList,
+  tabCount = tabList.size,
+  appBarLayout = binding.appbar,
+  offset = 0，
+  autoRefresh = false,
+  tabConfigurationStrategy = object : TabLayoutMediator2.TabConfigurationStrategy {
+    override fun onConfigureTab(tab: TabLayout.Tab, position: Int): IntArray {
+      tabList[position].apply {
+        tab.text = title
+        return intArrayOf(startViewType, endViewType)
+      }
+    }
+  }
+).attach()
+```
+
+## 效果
+
+1. 不重叠情况（CoordinatorLayout+AppBarLayout+TabLayout+RecyclerView)，这种布局RecyclerView就在TabLayout下方
+
+   ![不重叠](https://i.loli.net/2021/02/01/T961rOVE3ziDkoj.gif)
+
+   ```xml
+   <?xml version="1.0" encoding="utf-8"?>
+   <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+       xmlns:app="http://schemas.android.com/apk/res-auto"
+       xmlns:tools="http://schemas.android.com/tools"
+       android:id="@+id/coordinator_layout"
+       android:layout_width="match_parent"
+       android:layout_height="match_parent">
+   
+       <com.google.android.material.appbar.AppBarLayout
+           android:id="@+id/appbar"
+           android:layout_width="match_parent"
+           android:layout_height="wrap_content">
+   
+           <com.google.android.material.appbar.CollapsingToolbarLayout
+               android:id="@+id/toolbar_layout"
+               android:layout_width="match_parent"
+               android:layout_height="wrap_content"
+               app:toolbarId="@id/toolbar">
+               
+   						<!--  图库  -->
+               <androidx.viewpager2.widget.ViewPager2
+                   android:id="@+id/vp_gallery"
+                   android:layout_width="match_parent"
+                   android:layout_height="370dp"
+                   app:layout_collapseMode="parallax"
+                   tools:background="@android:color/darker_gray" />
+   
+               <androidx.appcompat.widget.Toolbar
+                   android:id="@+id/toolbar"
+                   android:layout_width="match_parent"
+                   android:layout_height="44dp">
+   
+                   <com.google.android.material.tabs.TabLayout
+                       android:id="@+id/tab_layout"
+                       android:layout_width="match_parent"
+                       android:layout_height="44dp" />
+   
+               </androidx.appcompat.widget.Toolbar>
+   
+           </com.google.android.material.appbar.CollapsingToolbarLayout>
+   
+       </com.google.android.material.appbar.AppBarLayout>
+   
+       <androidx.recyclerview.widget.RecyclerView
+           android:id="@+id/item_list"
+           android:layout_width="match_parent"
+           android:layout_height="match_parent"
+           android:orientation="vertical"
+           app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+           app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+   
+   </androidx.coordinatorlayout.widget.CoordinatorLayout>
+   ```
+
+2. 重叠情况(TabLayout+RecyclerView)
+
+   ![重叠](https://i.loli.net/2021/02/01/jiOVyG7xmhARvug.gif)
+
+   ```xml
+   <?xml version="1.0" encoding="utf-8"?>
+   <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+       xmlns:app="http://schemas.android.com/apk/res-auto"
+       xmlns:tools="http://schemas.android.com/tools"
+       android:layout_width="match_parent"
+       android:layout_height="match_parent">
+   
+       <androidx.recyclerview.widget.RecyclerView
+           android:id="@+id/item_list"
+           android:layout_width="match_parent"
+           android:layout_height="match_parent"
+           android:orientation="vertical"
+           app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+   
+       <com.google.android.material.tabs.TabLayout
+           android:id="@+id/tab_layout"
+           android:layout_width="match_parent"
+           android:layout_height="44dp"
+           android:alpha="0"
+           android:background="@android:color/white"
+           app:layout_constraintTop_toTopOf="parent"
+           app:tabContentStart="0dp"
+           app:tabGravity="fill"
+           app:tabIndicatorColor="@android:color/black"
+           app:tabIndicatorFullWidth="false"
+           app:tabIndicatorGravity="bottom"
+           app:tabMode="fixed"
+           app:tabPaddingEnd="0dp"
+           app:tabPaddingStart="0dp"
+           app:tabTextAppearance="@style/TabStyle"
+           tools:background="@android:color/darker_gray" />
+   
+   </androidx.constraintlayout.widget.ConstraintLayout>
+   ```
+
 ## 最后
 
-``TabLayoutMediator2``是模仿``ViewPager2``与``TabLayout``的绑定类``TabLayoutMediator``实现的，使用简单，建议大家可以去看下原API的实现，如果有什么问题欢迎大家留言。
+如果大家觉得这个库好用的话，欢迎大家star，多谢！
 
+另外最近也在找工作，希望有大佬可以帮忙内推，多谢！
+
+邮箱： zhkl2014@gmail.com
+
+微信：zhangkailu
