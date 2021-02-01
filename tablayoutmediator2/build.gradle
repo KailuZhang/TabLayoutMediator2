@@ -1,7 +1,5 @@
-plugins {
-    id 'com.android.library'
-    id 'kotlin-android'
-}
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 30
@@ -10,8 +8,8 @@ android {
     defaultConfig {
         minSdkVersion 17
         targetSdkVersion 30
-        versionCode 1
-        versionName "1.0"
+        versionCode rootProject.versionCode
+        versionName rootProject.versionName
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -41,4 +39,24 @@ dependencies {
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+}
+
+apply plugin: 'com.github.panpf.bintray-publish'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.panpf.bintray-publish:bintray-publish:1.0.0'
+    }
+}
+
+publish {
+    userOrg = 'kailuzhang'
+    groupId = 'io.kailuzhang.github.tablayoutmediator2'
+    artifactId = 'tablayoutmediator2'
+    publishVersion = rootProject.tablayoutmediator2_version
+    desc = 'Easy to bind TabLayout and Recyclerview'
+    website = 'https://github.com/KailuZhang/TabLayoutMediator2'
 }

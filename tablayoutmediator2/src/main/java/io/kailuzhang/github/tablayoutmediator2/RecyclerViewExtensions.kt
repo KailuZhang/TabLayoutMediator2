@@ -1,3 +1,4 @@
+@file:JvmName("RecyclerViewExtensions")
 package io.kailuzhang.github.tablayoutmediator2
 
 import androidx.recyclerview.widget.LinearLayoutManager

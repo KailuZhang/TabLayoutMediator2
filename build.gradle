@@ -24,3 +24,9 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+
+ext {
+    tablayoutmediator2_version = '0.1.0'
+    versionCode = 1
+    versionName = "0.1.0"
+}
