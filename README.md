@@ -1,21 +1,22 @@
-# Tablayout与RecyclerView锚点定位库——TabLayoutMediator2版本发布
+# 类京东商详页——一步实现TabLayout与RecyclerView绑定与锚点定位
 
 ## 背景
 
-之前已经写了一篇[博客](https://juejin.cn/post/6878160381966024718)详细介绍了TabLayoutMediator2的具体实现，并把代码放到了github上，但是还存在两点问题
+相信大家现在都很了解``TabLayout``+``ViewPager2``的组合使用，其中``TabLayout``与``ViewPager2``的绑定类``TabLayoutMediator``可以很非常简单的实现``TabLayout``与``ViewPager2``的绑定，这次我们就是按照``TabLayoutMediator``的思路实现``TabLayout``与``RecyclerView``的绑定
 
-1. 没有写Sample
-2. 只支持``TabLayout``与``RecyclerView``不重叠的情况，即``RecyclerView``在``TabLayout``的下方
+## 简介
 
-## 新版本
+**TabLayoutMediator2**是``TabLayout``与``RecyclerView``的绑定与锚点定位的仓库，非常适合电商App商品详情页的锚点定位使用，并且支持``CoordinatorLayout+AppBarLayout+TabLayout+RecyclerView``(TabLayout与RecyclerView不重叠的情况)和``TabLayout+RecyclerView``(TabLayout与RecyclerView的情况)。
 
-版本地址：[TabLayoutMediator2](https://github.com/KailuZhang/TabLayoutMediator2)
+[Github地址](https://github.com/KailuZhang/TabLayoutMediator2)
 
-这次解决了以上的问题
+### 效果
 
-1. 完成了事例应用
-2. 支持了``TabLayout``与``RecyclerView``重叠的情况
-3. 发布到了jcenter仓库中
+![sample](https://i.loli.net/2021/02/02/3SCvTVk67gMDhoX.gif)
+
+## 原理
+
+上篇文章已经介绍过：[文章地址](https://juejin.cn/post/6878160381966024718)，这次又增加了对TabLayout与RecyclerView重叠情况的支持，完善了demo
 
 ## 使用方法
 
@@ -27,7 +28,10 @@ dependencies {
 }
 ```
 
+可以很简单的调用
+
 ```kotlin
+// offset就是RecyclerView与TabLayout重叠的高度
 TabLayoutMediator2(
   tabLayout = binding.tabLayout,
   recyclerView = binding.itemList,
@@ -39,6 +43,7 @@ TabLayoutMediator2(
     override fun onConfigureTab(tab: TabLayout.Tab, position: Int): IntArray {
       tabList[position].apply {
         tab.text = title
+    		// 返回当前tab对应RecyclerView Adapter的起始ViewType与结束ViewType
         return intArrayOf(startViewType, endViewType)
       }
     }
@@ -46,108 +51,24 @@ TabLayoutMediator2(
 ).attach()
 ```
 
-## 效果
+### 两种使用情形
 
-1. 不重叠情况（CoordinatorLayout+AppBarLayout+TabLayout+RecyclerView)，这种布局RecyclerView就在TabLayout下方
+1. 不重叠情况（CoordinatorLayout+AppBarLayout+TabLayout+RecyclerView)
+
+   > 这种布局是图库控件与TabLayout都放在AppBarLayout中，RecyclerView在AppBarLayout下方，这种情况下offset = 0
 
    ![不重叠](https://i.loli.net/2021/02/01/T961rOVE3ziDkoj.gif)
 
-   ```xml
-   <?xml version="1.0" encoding="utf-8"?>
-   <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-       xmlns:app="http://schemas.android.com/apk/res-auto"
-       xmlns:tools="http://schemas.android.com/tools"
-       android:id="@+id/coordinator_layout"
-       android:layout_width="match_parent"
-       android:layout_height="match_parent">
-   
-       <com.google.android.material.appbar.AppBarLayout
-           android:id="@+id/appbar"
-           android:layout_width="match_parent"
-           android:layout_height="wrap_content">
-   
-           <com.google.android.material.appbar.CollapsingToolbarLayout
-               android:id="@+id/toolbar_layout"
-               android:layout_width="match_parent"
-               android:layout_height="wrap_content"
-               app:toolbarId="@id/toolbar">
-               
-   						<!--  图库  -->
-               <androidx.viewpager2.widget.ViewPager2
-                   android:id="@+id/vp_gallery"
-                   android:layout_width="match_parent"
-                   android:layout_height="370dp"
-                   app:layout_collapseMode="parallax"
-                   tools:background="@android:color/darker_gray" />
-   
-               <androidx.appcompat.widget.Toolbar
-                   android:id="@+id/toolbar"
-                   android:layout_width="match_parent"
-                   android:layout_height="44dp">
-   
-                   <com.google.android.material.tabs.TabLayout
-                       android:id="@+id/tab_layout"
-                       android:layout_width="match_parent"
-                       android:layout_height="44dp" />
-   
-               </androidx.appcompat.widget.Toolbar>
-   
-           </com.google.android.material.appbar.CollapsingToolbarLayout>
-   
-       </com.google.android.material.appbar.AppBarLayout>
-   
-       <androidx.recyclerview.widget.RecyclerView
-           android:id="@+id/item_list"
-           android:layout_width="match_parent"
-           android:layout_height="match_parent"
-           android:orientation="vertical"
-           app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-           app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-   
-   </androidx.coordinatorlayout.widget.CoordinatorLayout>
-   ```
-
 2. 重叠情况(TabLayout+RecyclerView)
+
+   > 这种布局是图库控件是作为RecyclerView的一个Item，TabLayout与RecyclerView重叠，offset = tablayot.height
 
    ![重叠](https://i.loli.net/2021/02/01/jiOVyG7xmhARvug.gif)
 
-   ```xml
-   <?xml version="1.0" encoding="utf-8"?>
-   <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-       xmlns:app="http://schemas.android.com/apk/res-auto"
-       xmlns:tools="http://schemas.android.com/tools"
-       android:layout_width="match_parent"
-       android:layout_height="match_parent">
-   
-       <androidx.recyclerview.widget.RecyclerView
-           android:id="@+id/item_list"
-           android:layout_width="match_parent"
-           android:layout_height="match_parent"
-           android:orientation="vertical"
-           app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
-   
-       <com.google.android.material.tabs.TabLayout
-           android:id="@+id/tab_layout"
-           android:layout_width="match_parent"
-           android:layout_height="44dp"
-           android:alpha="0"
-           android:background="@android:color/white"
-           app:layout_constraintTop_toTopOf="parent"
-           app:tabContentStart="0dp"
-           app:tabGravity="fill"
-           app:tabIndicatorColor="@android:color/black"
-           app:tabIndicatorFullWidth="false"
-           app:tabIndicatorGravity="bottom"
-           app:tabMode="fixed"
-           app:tabPaddingEnd="0dp"
-           app:tabPaddingStart="0dp"
-           app:tabTextAppearance="@style/TabStyle"
-           tools:background="@android:color/darker_gray" />
-   
-   </androidx.constraintlayout.widget.ConstraintLayout>
-   ```
 
 ## 最后
+
+目前该仓库已上线我们的项目(日活超过50万)超过3个月了，稳定运行。
 
 如果大家觉得这个库好用的话，欢迎大家star，多谢！
 
@@ -155,4 +76,3 @@ TabLayoutMediator2(
 
 邮箱： zhkl2014@gmail.com
 
-微信：zhangkailu
