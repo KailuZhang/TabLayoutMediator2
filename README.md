@@ -24,7 +24,7 @@
 
 ```groovy
 dependencies {
-		implementation 'io.kailuzhang.github.tablayoutmediator2:tablayoutmediator2:0.1.0'
+	implementation 'io.kailuzhang.github.tablayoutmediator2:tablayoutmediator2:0.1.0'
 }
 ```
 
@@ -68,7 +68,7 @@ TabLayoutMediator2(
 
 ## 最后
 
-目前该仓库已上线我们的项目(日活超过50万)超过3个月了，稳定运行。
+目前该仓库已上线我们的项目(日活超过100万)超过3个月了，稳定运行。
 
 如果大家觉得这个库好用的话，欢迎大家star，多谢！
 
