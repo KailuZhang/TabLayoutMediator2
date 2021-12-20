@@ -24,7 +24,7 @@
 
 ```groovy
 dependencies {
-	implementation 'io.kailuzhang.github.tablayoutmediator2:tablayoutmediator2:0.1.0'
+  implementation 'io.kailuzhang.github.tablayoutmediator2:tablayoutmediator2:0.1.0'
 }
 ```
 
@@ -64,15 +64,3 @@ TabLayoutMediator2(
    > 这种布局是图库控件是作为RecyclerView的一个Item，TabLayout与RecyclerView重叠，offset = tablayot.height
 
    ![重叠](https://i.loli.net/2021/02/01/jiOVyG7xmhARvug.gif)
-
-
-## 最后
-
-目前该仓库已上线我们的项目(日活超过100万)超过3个月了，稳定运行。
-
-如果大家觉得这个库好用的话，欢迎大家star，多谢！
-
-另外最近也在找工作，希望有大佬可以帮忙内推，多谢！
-
-邮箱： zhkl2014@gmail.com
-
