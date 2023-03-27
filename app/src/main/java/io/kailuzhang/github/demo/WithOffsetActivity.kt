@@ -12,6 +12,7 @@ import io.kailuzhang.github.demo.adapter.FeedAdapter
 import io.kailuzhang.github.demo.databinding.ActivityWithOffsetBinding
 import io.kailuzhang.github.demo.utils.UIUtils
 import io.kailuzhang.github.tablayoutmediator2.TabLayoutMediator2
+import kotlin.math.abs
 
 class WithOffsetActivity : AppCompatActivity() {
 
@@ -24,15 +25,10 @@ class WithOffsetActivity : AppCompatActivity() {
             it.items = getItemList()
         }
         binding.itemList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            var totalDy = 0
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                totalDy += dy
-                val firstCompleteVisiblePosition =
-                    (recyclerView.layoutManager as? LinearLayoutManager)?.findFirstCompletelyVisibleItemPosition()
-                if (firstCompleteVisiblePosition == 0) {
-                    totalDy = 0
-                }
-                binding.tabLayout.alpha = totalDy / 800f
+                val firstVisible = ((recyclerView.layoutManager) as? LinearLayoutManager)?.findFirstVisibleItemPosition()
+                val top = recyclerView.getChildAt(0)?.top ?: 0
+                binding.tabLayout.alpha = if (firstVisible == 0) abs(top) / 800f else 1f
             }
         })
 
